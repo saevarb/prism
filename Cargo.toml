@@ -1,0 +1,28 @@
+[package]
+name = "prism"
+version = "0.1.0"
+edition = "2021"
+authors = ["Sævar Berg"]
+repository = "https://github.com/saevarb/prism"
+license = "MIT"
+description = '''
+prism is a tool for splitting up noisy log output into groups based on a regular expression.
+Primarily written to work alongside turborepo(https://turborepo.org/), but it supports a parsing log lines based on a custom regular expression.
+'''
+readme = "readme.md"
+keywords = ["tui", "turborepo", "logging"]
+
+
+[dependencies]
+ansi-to-tui = "2.0.0"
+anyhow = "1.0.65"
+clap = { version = "4.0.11", features = ["derive"] }
+crossterm = "0.25.0"
+ctrlc = { version = "3.2.3", features = ["termination"] }
+env_logger = "0.9.1"
+log = "0.4.17"
+nix = "0.25.0"
+regex = "1.6.0"
+signal-child = "1.0.5"
+timeout-readwrite = "0.3.2"
+tui = "0.19.0"
