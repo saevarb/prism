@@ -18,6 +18,12 @@ Running it on its own log output:
 - Custom regular expression
 - Color support
 
+# Installation
+
+```shell
+$ cargo install prism-rs
+```
+
 # Usage
 
 **NOTE**: This is alpha level software. Use at your own risk.
