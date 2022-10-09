@@ -59,6 +59,7 @@ $ RUST_LOG=debug prism -p '\[.* ([A-Z]+ .*?)\] (.*)' "tail -f log" 2>log
 ## Known issues
 
 - When used with `turborepo`, child processes are not terminated reliably
+- The terminal is not always left in a great state when exiting and requires a `reset`
 - The default regular expression is probably not very good
 
 ## TODO
