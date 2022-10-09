@@ -67,11 +67,22 @@ fn render_messages(app: &mut App, f: &mut Frame<CrosstermBackend<io::Stdout>>, d
   match app.display_state {
     DisplayState::Messages => {
       let prefix = app.get_selected_prefix();
-      let title = if let Some(p) = prefix {
-        format!(" Messages for {} ", p)
+      let mut pieces: Vec<String> = vec![];
+      if let Some(p) = prefix {
+        pieces.push(format!(" Messages for {} ", p));
+        if app
+          .get_current_bucket()
+          .map_or(false, |b| b.scroll.is_some())
+        {
+          pieces.push(format!(
+            "({} older) ",
+            app.get_current_bucket().unwrap().get_older(height)
+          ));
+        }
       } else {
-        " Messages ".to_string()
+        pieces.push(" Messages ".to_string())
       };
+      let title = pieces.join(" ");
       let list = List::new(messages)
         .block(
           Block::default()
@@ -121,20 +132,20 @@ fn render_prefix_list(
   f: &mut Frame<CrosstermBackend<io::Stdout>>,
   destination: Rect,
 ) {
-  let titles = app.get_buckets();
-  let titles: Vec<Spans> = titles
+  let titles: Vec<Spans> = app
+    .get_buckets()
     .iter()
-    .map(|(count, label)| {
+    .map(|(label, bucket)| {
       Spans(vec![
         Span::styled(
-          format!("{:3} ", count),
-          Style::default().fg(if count > &0 {
+          format!("{:3} ", bucket.new_messages),
+          Style::default().fg(if bucket.new_messages > 0 {
             Color::Cyan
           } else {
             Color::White
           }),
         ),
-        Span::styled(label, Style::default().fg(Color::White)),
+        Span::styled(label.clone(), Style::default().fg(Color::White)),
       ])
     })
     .collect();

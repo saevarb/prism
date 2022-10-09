@@ -1,6 +1,7 @@
 use anyhow::Result;
-use crossterm::event::{self, Event, KeyCode};
-use log::{debug};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
+use crossterm::terminal::ScrollUp;
+use log::debug;
 use regex::Regex;
 use std::sync::mpsc::Receiver;
 use std::time::Instant;
@@ -68,6 +69,7 @@ impl App {
     errors: Receiver<String>,
   ) -> Result<(), std::io::Error> {
     loop {
+      let height = terminal.size()?.height;
       let now = Instant::now();
       let stdout_end = now + Duration::from_millis(4);
       let stderr_end = now + Duration::from_millis(8);
@@ -89,18 +91,54 @@ impl App {
       let remaining = render_end - Instant::now();
       terminal.draw(|f| draw(self, f))?;
       if event::poll(remaining)? {
-        if let Event::Key(key) = event::read()? {
-          match key.code {
+        let event = event::read()?;
+        match event {
+          Event::Key(key) => match key.code {
             KeyCode::Char('q') => return Ok(()),
             KeyCode::Char('j') => self.next_prefix(),
             KeyCode::Char('k') => self.previous_prefix(),
+            KeyCode::Char('w') => self.scroll_up(height.into()),
+            KeyCode::Char('s') => self.scroll_down(height.into()),
+            KeyCode::Char('K') => self.scroll_up(height.into()),
+            KeyCode::Char('J') => self.scroll_down(height.into()),
+            KeyCode::Char('r') => self.scroll_reset(),
             KeyCode::Tab => {
               self.set_display_state(self.display_state.next());
             }
             _ => {}
-          }
+          },
+          Event::Mouse(mouse) => match mouse {
+            MouseEvent {
+              kind: MouseEventKind::ScrollUp,
+              ..
+            } => self.scroll_up(height.into()),
+            MouseEvent {
+              kind: MouseEventKind::ScrollDown,
+              ..
+            } => self.scroll_down(height.into()),
+            _ => {}
+          },
+          _ => (),
         }
       }
+    }
+  }
+
+  fn scroll_up(&mut self, height: usize) {
+    if let Some(bucket) = self.get_current_bucket() {
+      bucket.scroll_up(height);
+    }
+  }
+
+  fn scroll_down(&mut self, height: usize) {
+    if let Some(bucket) = self.get_current_bucket() {
+      bucket.scroll_down(height);
+    }
+  }
+
+  fn scroll_reset(&mut self) {
+    if let Some(bucket) = self.get_current_bucket() {
+      bucket.scroll_reset();
     }
   }
 
@@ -168,13 +206,9 @@ impl App {
     self.error_messages.add_message(error.to_string());
   }
 
-  pub fn get_buckets(&self) -> Vec<(usize, String)> {
-    let mut vec = self
-      .buckets
-      .iter()
-      .map(|(k, v)| (v.new_messages, k.clone()))
-      .collect::<Vec<_>>();
-    vec.sort_by_key(|(_, s)| s.clone());
+  pub fn get_buckets(&self) -> Vec<(&String, &Bucket<Line>)> {
+    let mut vec = self.buckets.iter().collect::<Vec<_>>();
+    vec.sort_by_key(|(s, _)| s.clone());
     vec
   }
 
@@ -189,27 +223,24 @@ impl App {
           Some(i)
         }
       })
-      .map(|i| self.get_buckets()[i].1.clone())
+      .map(|i| self.get_buckets()[i].0.clone())
+  }
+
+  pub fn get_current_bucket(&mut self) -> Option<&mut Bucket<Line>> {
+    self
+      .get_selected_prefix()
+      .and_then(|prefix| self.buckets.get_mut(&prefix))
   }
 
   pub fn get_current_messages(&mut self, count: usize) -> LinkedList<String> {
     if self.buckets.len() == 0 {
       return LinkedList::new();
     }
-    // if self.messages.len
-    self
-      .list_state
-      .selected()
-      .map(|i| -> LinkedList<String> {
-        let (_, prefix) = self.get_buckets()[i].clone();
-        let bucket = self.buckets.get_mut(&prefix);
-        bucket
-          .unwrap()
-          .get_messages(count)
-          .iter()
-          .map(|l| l.message.clone())
-          .collect()
-      })
-      .unwrap_or(LinkedList::new())
+    let mut bucket = self.get_current_bucket().unwrap();
+    bucket
+      .get_messages(count)
+      .iter()
+      .map(|l| l.message.clone())
+      .collect()
   }
 }
