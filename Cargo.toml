@@ -1,5 +1,5 @@
 [package]
-name = "prism"
+name = "prism-rs"
 version = "0.1.0"
 edition = "2021"
 authors = ["Sævar Berg"]
@@ -12,6 +12,9 @@ Primarily written to work alongside turborepo(https://turborepo.org/), but it su
 readme = "readme.md"
 keywords = ["tui", "turborepo", "logging"]
 
+[[bin]]
+name = "prism"
+path = "src/main.rs"
 
 [dependencies]
 ansi-to-tui = "2.0.0"
