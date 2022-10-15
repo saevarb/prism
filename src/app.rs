@@ -102,9 +102,9 @@ impl App {
             KeyCode::Char('K') => self.scroll_up(height.into()),
             KeyCode::Char('J') => self.scroll_down(height.into()),
             KeyCode::Char('r') => self.scroll_reset(),
-            KeyCode::Tab => {
-              self.set_display_state(self.display_state.next());
-            }
+            KeyCode::Esc => self.set_display_state(DisplayState::Messages),
+            KeyCode::Char('e') => self.set_display_state(DisplayState::Errors),
+            KeyCode::Char('p') => self.set_display_state(DisplayState::ParseErrors),
             _ => {}
           },
           Event::Mouse(mouse) => match mouse {
@@ -143,7 +143,11 @@ impl App {
   }
 
   fn set_display_state(&mut self, state: DisplayState) {
-    self.display_state = state;
+    if self.display_state != state {
+      self.display_state = state;
+    } else {
+      self.display_state = DisplayState::Messages;
+    }
   }
 
   fn next_prefix(&mut self) {

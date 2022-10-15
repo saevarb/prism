@@ -23,18 +23,8 @@ use crate::app::App;
 pub enum DisplayState {
   Messages,
   Errors,
-  Unprefixed,
+  ParseErrors,
   // Help,
-}
-
-impl DisplayState {
-  pub fn next(&self) -> DisplayState {
-    match self {
-      DisplayState::Messages => DisplayState::Errors,
-      DisplayState::Errors => DisplayState::Unprefixed,
-      DisplayState::Unprefixed => DisplayState::Messages,
-    }
-  }
 }
 
 pub fn draw(app: &mut App, f: &mut Frame<CrosstermBackend<io::Stdout>>) {
@@ -112,7 +102,7 @@ fn render_messages(app: &mut App, f: &mut Frame<CrosstermBackend<io::Stdout>>, d
       );
       f.render_widget(error_list, destination);
     }
-    DisplayState::Unprefixed => {
+    DisplayState::ParseErrors => {
       let list = List::new(
         app
           .unprefixed_messages
@@ -184,7 +174,7 @@ fn render_other_list(app: &mut App, f: &mut Frame<CrosstermBackend<io::Stdout>>,
     Style::default()
       .fg(Color::Yellow)
       .add_modifier(Modifier::BOLD)
-  } else if app.display_state == DisplayState::Unprefixed {
+  } else if app.display_state == DisplayState::ParseErrors {
     Style::default().fg(Color::Yellow)
   } else {
     Style::default().fg(Color::White)
