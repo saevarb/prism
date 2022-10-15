@@ -2,11 +2,16 @@ use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 use crossterm::terminal::ScrollUp;
 use log::debug;
+use log::info;
 use regex::Regex;
+use std::io::{LineWriter, Write};
+use std::process::{Command, Stdio};
 use std::sync::mpsc::Receiver;
 use std::time::Instant;
 use std::{collections::HashMap, time::Duration};
 use std::{collections::LinkedList, io::Stdout};
+use std::{env, fs};
+use tempfile::NamedTempFile;
 use tui::{backend::CrosstermBackend, widgets::ListState, Terminal};
 
 use crate::cli::Config;
@@ -43,6 +48,20 @@ pub struct App {
 pub struct Line {
   pub prefix: Option<String>,
   pub message: String,
+}
+
+impl Line {
+  pub fn render(&self) -> String {
+    return format!(
+      "{}{}",
+      self
+        .prefix
+        .as_ref()
+        .map(|p| format!("{}: ", p))
+        .unwrap_or_default(),
+      self.message
+    );
+  }
 }
 
 impl App {
@@ -105,6 +124,7 @@ impl App {
             KeyCode::Esc => self.set_display_state(DisplayState::Messages),
             KeyCode::Char('e') => self.set_display_state(DisplayState::Errors),
             KeyCode::Char('p') => self.set_display_state(DisplayState::ParseErrors),
+            KeyCode::Enter => self.open_in_editor().unwrap_or(()),
             _ => {}
           },
           Event::Mouse(mouse) => match mouse {
@@ -246,5 +266,31 @@ impl App {
       .iter()
       .map(|l| l.message.clone())
       .collect()
+  }
+
+  fn open_in_editor(&mut self) -> Option<()> {
+    let log_lines: Vec<String> = self
+      .get_current_bucket()?
+      .get_all_messages()
+      .iter()
+      .map(|l| l.render())
+      .collect();
+    let log = log_lines.join("\n");
+    let mut file = NamedTempFile::new().ok()?;
+    file.write_all(log.as_bytes()).ok()?;
+    info!("Wrote log to file {}", file.path().display());
+
+    let editor = env::var("EDITOR").ok()?;
+    let mut args = vec![];
+    args.push("-n");
+    args.push(file.path().to_str()?);
+
+    let mut command = Command::new(editor);
+    command.stdout(Stdio::null());
+    command.args(args);
+    command.spawn().ok()?;
+    //
+    file.keep().ok()?;
+    return Some(());
   }
 }

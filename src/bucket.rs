@@ -25,6 +25,10 @@ impl<I: Clone> Bucket<I> {
     }
   }
 
+  pub fn get_all_messages(&self) -> &Vec<I> {
+    &self.messages
+  }
+
   pub fn add_message(&mut self, message: I) {
     self.messages.push(message);
     self.new_messages += 1;
