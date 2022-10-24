@@ -1,37 +1,42 @@
 use log::debug;
-use std::collections::{LinkedList, VecDeque};
+
+use crate::app::Line;
 
 #[derive(Clone, Debug)]
-pub struct Bucket<I> {
-  messages: Vec<I>,
+pub struct Bucket {
+  messages: Vec<Line>,
   pub new_messages: usize,
+  pub new_errors: usize,
   pub scroll: Option<usize>,
 }
 
-impl<I: Clone> Bucket<I> {
-  pub fn new() -> Bucket<I> {
+impl Bucket {
+  pub fn new() -> Bucket {
     Bucket {
       messages: Default::default(),
       new_messages: 0,
+      new_errors: 0,
       scroll: None,
     }
   }
 
-  pub fn from_messages(messages: Vec<I>) -> Bucket<I> {
+  pub fn from_messages(messages: Vec<Line>) -> Bucket {
     Bucket {
       messages: messages.into_iter().collect(),
       new_messages: 0,
+      new_errors: 0,
       scroll: None,
     }
   }
 
-  pub fn get_all_messages(&self) -> &Vec<I> {
+  pub fn get_all_messages(&self) -> &Vec<Line> {
     &self.messages
   }
 
-  pub fn add_message(&mut self, message: I) {
-    self.messages.push(message);
+  pub fn add_message(&mut self, message: Line) {
+    self.new_errors += if message.has_error { 1 } else { 0 };
     self.new_messages += 1;
+    self.messages.push(message);
   }
 
   pub fn get_older(&self, height: usize) -> usize {
@@ -48,8 +53,9 @@ impl<I: Clone> Bucket<I> {
     }
   }
 
-  pub fn get_messages(&mut self, count: usize) -> Vec<I> {
+  pub fn get_messages(&mut self, count: usize) -> Vec<Line> {
     self.new_messages = 0;
+    self.new_errors = 0;
 
     let skip = self
       .scroll

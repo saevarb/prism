@@ -19,35 +19,39 @@ use crate::render::DisplayState;
 use crate::{bucket::Bucket, render::draw};
 
 impl Line {
-  pub fn with_prefix(prefix: String, message: String) -> Self {
+  pub fn with_prefix(prefix: String, message: String, has_error: bool) -> Self {
     Self {
       prefix: Some(prefix),
       message,
+      has_error,
     }
   }
   pub fn without_prefix(message: String) -> Self {
     Self {
       prefix: None,
       message,
+      ..Default::default()
     }
   }
 }
 
 pub struct App {
   /// Messages by prefix
-  pub buckets: HashMap<String, Bucket<Line>>,
-  pub error_messages: Bucket<String>,
-  pub unprefixed_messages: Bucket<Line>,
+  pub buckets: HashMap<String, Bucket>,
+  pub error_messages: Bucket,
+  pub unprefixed_messages: Bucket,
   pub list_state: ListState,
   pub display_state: DisplayState,
   config: Config,
   regex: Regex,
+  error_regex: Regex,
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct Line {
   pub prefix: Option<String>,
   pub message: String,
+  pub has_error: bool,
 }
 
 impl Line {
@@ -78,6 +82,7 @@ impl App {
       },
       config: config.clone(),
       regex: Regex::new(config.prefix.as_str()).unwrap(),
+      error_regex: Regex::new(r"(?i).*(error|exception|stack.?trace).*").unwrap(),
     }
   }
 
@@ -125,6 +130,8 @@ impl App {
             KeyCode::Char('e') => self.set_display_state(DisplayState::Errors),
             KeyCode::Char('p') => self.set_display_state(DisplayState::ParseErrors),
             KeyCode::Char('n') => self.next_bucket(),
+            KeyCode::Char('c') => self.clear_new_messages(),
+            KeyCode::Char('C') => self.clear_all_messages(),
             KeyCode::Enter => self.open_in_editor().unwrap_or(()),
             _ => {}
           },
@@ -215,7 +222,12 @@ impl App {
     let res: Option<Line>;
     if let Some(caps) = self.regex.captures(line) {
       if caps.len() >= 2 {
-        res = Some(Line::with_prefix(caps[1].to_string(), caps[2].to_string()))
+        let has_error = self.error_regex.is_match(line);
+        res = Some(Line::with_prefix(
+          caps[1].to_string(),
+          caps[2].to_string(),
+          has_error,
+        ));
       } else {
         debug!("No prefix found for line: {}", line);
         res = Some(Line::without_prefix(input.to_string()))
@@ -228,10 +240,12 @@ impl App {
   }
 
   fn process_error(&mut self, error: &String) {
-    self.error_messages.add_message(error.to_string());
+    self
+      .error_messages
+      .add_message(Line::without_prefix(error.to_string()));
   }
 
-  pub fn get_buckets(&self) -> Vec<(&String, &Bucket<Line>)> {
+  pub fn get_buckets(&self) -> Vec<(&String, &Bucket)> {
     let mut vec = self.buckets.iter().collect::<Vec<_>>();
     vec.sort_by_key(|(s, _)| s.clone());
     vec
@@ -251,7 +265,7 @@ impl App {
       .map(|i| self.get_buckets()[i].0.clone())
   }
 
-  pub fn get_current_bucket(&mut self) -> Option<&mut Bucket<Line>> {
+  pub fn get_current_bucket(&mut self) -> Option<&mut Bucket> {
     self
       .get_selected_prefix()
       .and_then(|prefix| self.buckets.get_mut(&prefix))
@@ -302,10 +316,26 @@ impl App {
     for n in selected + 1..end {
       let i = n % buckets.len();
       let bucket = &buckets[i];
+      if bucket.1.new_errors > 0 {
+        self.list_state.select(Some(i));
+        return;
+      }
+    }
+    for n in selected + 1..end {
+      let i = n % buckets.len();
+      let bucket = &buckets[i];
       if bucket.1.new_messages > 0 {
         self.list_state.select(Some(i));
         return;
       }
     }
+  }
+
+  fn clear_new_messages(&self) {
+    todo!()
+  }
+
+  fn clear_all_messages(&self) {
+    todo!()
   }
 }

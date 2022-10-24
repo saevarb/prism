@@ -91,7 +91,7 @@ fn render_messages(app: &mut App, f: &mut Frame<CrosstermBackend<io::Stdout>>, d
         .error_messages
         .get_messages(height - 2)
         .iter()
-        .map(|s| ListItem::new(s.to_string()))
+        .map(|s| ListItem::new(s.message.to_string()))
         .collect::<Vec<ListItem>>();
 
       let error_list = List::new(errors).block(
@@ -127,6 +127,14 @@ fn render_prefix_list(
     .iter()
     .map(|(label, bucket)| {
       Spans(vec![
+        Span::styled(
+          format!("{:3} ", bucket.new_errors),
+          Style::default().fg(if bucket.new_messages > 0 {
+            Color::Red
+          } else {
+            Color::White
+          }),
+        ),
         Span::styled(
           format!("{:3} ", bucket.new_messages),
           Style::default().fg(if bucket.new_messages > 0 {
