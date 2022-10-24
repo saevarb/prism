@@ -124,6 +124,7 @@ impl App {
             KeyCode::Esc => self.set_display_state(DisplayState::Messages),
             KeyCode::Char('e') => self.set_display_state(DisplayState::Errors),
             KeyCode::Char('p') => self.set_display_state(DisplayState::ParseErrors),
+            KeyCode::Char('n') => self.next_bucket(),
             KeyCode::Enter => self.open_in_editor().unwrap_or(()),
             _ => {}
           },
@@ -292,5 +293,19 @@ impl App {
     //
     file.keep().ok()?;
     return Some(());
+  }
+
+  fn next_bucket(&mut self) {
+    let buckets = self.get_buckets();
+    let selected = self.list_state.selected().unwrap_or(0);
+    let end = selected + buckets.len();
+    for n in selected + 1..end {
+      let i = n % buckets.len();
+      let bucket = &buckets[i];
+      if bucket.1.new_messages > 0 {
+        self.list_state.select(Some(i));
+        return;
+      }
+    }
   }
 }
