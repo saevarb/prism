@@ -262,7 +262,7 @@ impl App {
     }
     let mut bucket = self.get_current_bucket().unwrap();
     bucket
-      .get_messages(count)
+      .get_messages(count - 2)
       .iter()
       .map(|l| l.message.clone())
       .collect()

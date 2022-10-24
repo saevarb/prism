@@ -89,7 +89,7 @@ fn render_messages(app: &mut App, f: &mut Frame<CrosstermBackend<io::Stdout>>, d
     DisplayState::Errors => {
       let errors: Vec<ListItem> = app
         .error_messages
-        .get_messages(height)
+        .get_messages(height - 2)
         .iter()
         .map(|s| ListItem::new(s.to_string()))
         .collect::<Vec<ListItem>>();
@@ -106,7 +106,7 @@ fn render_messages(app: &mut App, f: &mut Frame<CrosstermBackend<io::Stdout>>, d
       let list = List::new(
         app
           .unprefixed_messages
-          .get_messages(height)
+          .get_messages(height - 2)
           .iter()
           .map(|s| ListItem::new(s.message.clone().into_bytes().into_text().unwrap()))
           .collect::<Vec<ListItem>>(),
