@@ -4,6 +4,7 @@ use crossterm::terminal::ScrollUp;
 use log::debug;
 use log::info;
 use regex::Regex;
+use std::fs::{File, OpenOptions};
 use std::io::{LineWriter, Write};
 use std::process::{Command, Stdio};
 use std::sync::mpsc::Receiver;
@@ -284,6 +285,7 @@ impl App {
   }
 
   fn open_in_editor(&mut self) -> Option<()> {
+    let prefix_name = self.get_selected_prefix()?;
     let log_lines: Vec<String> = self
       .get_current_bucket()?
       .get_all_messages()
@@ -291,21 +293,25 @@ impl App {
       .map(|l| l.render())
       .collect();
     let log = log_lines.join("\n");
-    let mut file = NamedTempFile::new().ok()?;
+    let filename = format!("/tmp/{}.log", prefix_name);
+    let mut file = OpenOptions::new()
+      .write(true)
+      .create(true)
+      .open(filename.as_str())
+      .ok()?;
     file.write_all(log.as_bytes()).ok()?;
-    info!("Wrote log to file {}", file.path().display());
+    info!("Wrote log to file {}", filename);
 
     let editor = env::var("EDITOR").ok()?;
     let mut args = vec![];
     args.push("-n");
-    args.push(file.path().to_str()?);
+    args.push(&filename);
 
     let mut command = Command::new(editor);
     command.stdout(Stdio::null());
     command.args(args);
     command.spawn().ok()?;
     //
-    file.keep().ok()?;
     return Some(());
   }
 
