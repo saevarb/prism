@@ -130,8 +130,8 @@ impl App {
             KeyCode::Char('e') => self.set_display_state(DisplayState::Errors),
             KeyCode::Char('p') => self.set_display_state(DisplayState::ParseErrors),
             KeyCode::Char('n') => self.next_bucket(),
-            KeyCode::Char('c') => self.clear_new_messages(),
-            KeyCode::Char('C') => self.clear_all_messages(),
+            KeyCode::Char('c') => self.clear_current_bucket(),
+            KeyCode::Char('C') => self.clear_all_buckets(),
             KeyCode::Enter => self.open_in_editor().unwrap_or(()),
             _ => {}
           },
@@ -331,11 +331,15 @@ impl App {
     }
   }
 
-  fn clear_new_messages(&self) {
-    todo!()
+  fn clear_all_buckets(&mut self) {
+    for (_, bucket) in self.buckets.iter_mut() {
+      bucket.clear_all_messages();
+    }
   }
 
-  fn clear_all_messages(&self) {
-    todo!()
+  fn clear_current_bucket(&mut self) {
+    if let Some(bucket) = self.get_current_bucket() {
+      bucket.clear_all_messages();
+    }
   }
 }

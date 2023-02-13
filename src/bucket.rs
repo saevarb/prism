@@ -39,6 +39,12 @@ impl Bucket {
     self.messages.push(message);
   }
 
+  pub fn clear_all_messages(&mut self) {
+    self.messages.clear();
+    self.new_messages = 0;
+    self.new_errors = 0;
+  }
+
   pub fn get_older(&self, height: usize) -> usize {
     if let Some(scroll) = self.scroll {
       debug!(
