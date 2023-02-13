@@ -120,6 +120,9 @@ impl App {
         match event {
           Event::Key(key) => match key.code {
             KeyCode::Char('q') => return Ok(()),
+            KeyCode::Char('c') if key.modifiers & KeyModifiers::CONTROL > KeyModifiers::NONE => {
+              return Ok(())
+            }
             KeyCode::Char('j') => self.next_prefix(),
             KeyCode::Char('k') => self.previous_prefix(),
             KeyCode::Char('w') => self.scroll_up(height.into()),
