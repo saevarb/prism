@@ -288,7 +288,11 @@ impl App {
   }
 
   fn open_in_editor(&mut self) -> Option<()> {
-    let prefix_name = self.get_selected_prefix()?;
+    let mut prefix_name = self.get_selected_prefix()?;
+    let fixed_prefix = Regex::new(r"[@\-/\\:]")
+      .unwrap()
+      .replace_all(&prefix_name, "_");
+
     let log_lines: Vec<String> = self
       .get_current_bucket()?
       .get_all_messages()
@@ -296,7 +300,7 @@ impl App {
       .map(|l| l.render())
       .collect();
     let log = log_lines.join("\n");
-    let filename = format!("/tmp/{}.log", prefix_name);
+    let filename = format!("/tmp/{}.log", fixed_prefix);
     let mut file = OpenOptions::new()
       .write(true)
       .create(true)
