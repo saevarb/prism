@@ -6,7 +6,7 @@ use log::info;
 use regex::Regex;
 use std::fs::{File, OpenOptions};
 use std::io::{LineWriter, Write};
-use std::process::{Command, Stdio};
+use std::process::{Command, ExitCode, ExitStatus, Stdio};
 use std::sync::mpsc::Receiver;
 use std::time::Instant;
 use std::{collections::HashMap, time::Duration};
@@ -18,6 +18,11 @@ use tui::{backend::CrosstermBackend, widgets::ListState, Terminal};
 use crate::cli::Config;
 use crate::render::DisplayState;
 use crate::{bucket::Bucket, render::draw};
+
+#[derive(Clone, Debug)]
+pub enum AppMessage {
+  Exit(ExitStatus),
+}
 
 impl Line {
   pub fn with_prefix(prefix: String, message: String, has_error: bool) -> Self {
@@ -46,6 +51,7 @@ pub struct App {
   config: Config,
   regex: Regex,
   error_regex: Regex,
+  pub exit_code: Option<ExitStatus>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -84,6 +90,7 @@ impl App {
       config: config.clone(),
       regex: Regex::new(config.prefix.as_str()).unwrap(),
       error_regex: Regex::new(r"(?i).*(error|exception|stack.?trace).*").unwrap(),
+      exit_code: None,
     }
   }
 
@@ -92,6 +99,7 @@ impl App {
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     output: Receiver<String>,
     errors: Receiver<String>,
+    monitor: Receiver<AppMessage>,
   ) -> Result<(), std::io::Error> {
     loop {
       let height = terminal.size()?.height;
@@ -115,6 +123,14 @@ impl App {
 
       let remaining = render_end - Instant::now();
       terminal.draw(|f| draw(self, f))?;
+      if let Ok(x) = monitor.try_recv() {
+        info!("Process exited: {:?}", x);
+        match x {
+          AppMessage::Exit(code) => {
+            self.notify_exit(code);
+          }
+        }
+      }
       if event::poll(remaining)? {
         let event = event::read()?;
         match event {
@@ -154,6 +170,10 @@ impl App {
         }
       }
     }
+  }
+
+  fn notify_exit(&mut self, exit_code: ExitStatus) {
+    self.exit_code = Some(exit_code);
   }
 
   fn scroll_up(&mut self, height: usize) {

@@ -4,6 +4,7 @@ mod cli;
 mod render;
 
 use anyhow::Result;
+use app::AppMessage;
 use clap::CommandFactory;
 use clap::Parser;
 use cli::Config;
@@ -14,6 +15,8 @@ use signal::killpg;
 
 use std::io;
 use std::io::Read;
+use std::process::Child;
+use std::sync::mpsc::SendError;
 use std::thread;
 use std::{io::BufRead, io::BufReader, sync::mpsc};
 use std::{process::Stdio, sync::mpsc::Receiver};
@@ -36,6 +39,24 @@ fn spawn_reader_thread<S: Read + std::marker::Send + 'static>(stream: S) -> Rece
           debug!("Error sending line: {}", e);
         }
       });
+  });
+  rx
+}
+
+fn spawn_monitor_thread(mut child: Child) -> Receiver<AppMessage> {
+  let (tx, rx) = mpsc::channel::<AppMessage>();
+  thread::spawn(move || -> Result<(), SendError<_>> {
+    loop {
+      match child.try_wait() {
+        Ok(Some(code)) => {
+          tx.send(AppMessage::Exit(code))?;
+          break Ok(());
+        }
+        Ok(None) => (),
+        Err(_) => (),
+      }
+      thread::sleep(std::time::Duration::from_millis(16));
+    }
   });
   rx
 }
@@ -65,10 +86,11 @@ fn main() -> Result<()> {
   let stderr = process.stderr.take().expect("Failed to open stderr");
   let output = spawn_reader_thread(stdout);
   let errors = spawn_reader_thread(stderr);
+  let monitor = spawn_monitor_thread(process);
 
   setup_tui()?;
   let mut app = App::new(&config);
-  let _res = app.run(&mut terminal, output, errors)?;
+  let _res = app.run(&mut terminal, output, errors, monitor)?;
   teardown_tui(&mut terminal)?;
 
   // NOTE: The below is my current attempt at ensuring that all child processes are killed when we exit.
@@ -85,7 +107,7 @@ fn main() -> Result<()> {
   // This should send SIGINT to all our children and terminate them
   killpg(Pid::this(), signal::Signal::SIGINT).expect("Failed to kill parent process group");
   rx.recv().expect("Failed to receive signal");
-  process.wait().expect("Failed to wait for process");
+  // process.wait().expect("Failed to wait for process");
   debug!("Process exited");
 
   Ok(())

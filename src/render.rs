@@ -57,30 +57,42 @@ fn render_messages(app: &mut App, f: &mut Frame<CrosstermBackend<io::Stdout>>, d
   match app.display_state {
     DisplayState::Messages => {
       let prefix = app.get_selected_prefix();
-      let mut pieces: Vec<String> = vec![];
+      let mut pieces: Vec<Span> = vec![];
       if let Some(p) = prefix {
-        pieces.push(format!(" Messages for {} ", p));
+        pieces.push(Span::styled(
+          format!(" Messages for {} ", p),
+          Style::default().fg(Color::Green),
+        ));
         if app
           .get_current_bucket()
           .map_or(false, |b| b.scroll.is_some())
         {
-          pieces.push(format!(
-            "({} older) ",
-            app.get_current_bucket().unwrap().get_older(height)
+          pieces.push(Span::styled(
+            format!(
+              "({} older) ",
+              app.get_current_bucket().unwrap().get_older(height)
+            ),
+            Style::default().fg(Color::Green),
           ));
         }
       } else {
-        pieces.push(" Messages ".to_string())
+        pieces.push(Span::styled(
+          " Messages ".to_string(),
+          Style::default().fg(Color::Green),
+        ));
       };
-      let title = pieces.join(" ");
+      if let Some(b) = app.exit_code {
+        pieces.push(Span::styled(
+          format!(" (process exited: {}) ", b),
+          Style::default().fg(Color::Red),
+        ));
+      }
+      // let title = pieces.join(" ");
       let list = List::new(messages)
         .block(
           Block::default()
             .borders(Borders::ALL)
-            .title(Spans::from(vec![Span::styled(
-              title,
-              Style::default().fg(Color::Green),
-            )])),
+            .title(Spans::from(pieces)),
         )
         .highlight_style(Style::default().add_modifier(Modifier::BOLD))
         .highlight_symbol(">> ");
